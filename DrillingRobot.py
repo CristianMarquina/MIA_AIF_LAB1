@@ -22,7 +22,33 @@ class DrillingRobot(Problem):
         many actions, consider yielding them one at a time in an
         iterator, rather than building them all at once."""
         
-        possible_actions = ['DRILL', 'TURN_LEFT', 'TURN_RIGHT']
+
+        # At the beginig we asume that the 'drill' action is not possible
+        possible_actions = ['TURN_LEFT', 'TURN_RIGHT']
+
+        x, y, orientation = state
+        
+        # Assign to each orientation the change in the coordinates (dx, dy) if the robot execute the 'drill' action
+        move_deltas = {
+            0: (-1, 0),  # North
+            1: (-1, 1),  # Northeast
+            2: (0, 1),   # East
+            3: (1, 1),   # Southeast
+            4: (1, 0),   # South
+            5: (1, -1),  # Southwest
+            6: (0, -1),  # West
+            7: (-1, -1)  # Northwest
+        }
+        
+        # Apply the change in the coordinates
+        dx, dy = move_deltas[orientation]
+        new_x, new_y = x + dx, y + dy
+        
+        # Verify if its possible to drill (map limits)
+        if 0 <= new_x < self.rows and 0 <= new_y < self.cols:
+            possible_actions.append('DRILL')
+            
+        return possible_actions
 
     def result(self, state, action):
         """Return the state that results from executing the given
@@ -33,6 +59,35 @@ class DrillingRobot(Problem):
             state[2] -= 1
         elif action == 'TURN_RIGHT':
             state[2] += 1
+
+        x, y, orientation = state
+
+        if action == 'TURN_LEFT':
+            # New orientation between 0 and 7
+            new_orientation = (orientation - 1) % 8
+            return (x, y, new_orientation)
+        
+        elif action == 'TURN_RIGHT':
+            # New orientation between 0 and 7
+            new_orientation = (orientation + 1) % 8
+            return (x, y, new_orientation)
+        
+        elif action == 'DRILL':
+            # Orientación a cambio de coordenadas
+            move_deltas = {
+                0: (-1, 0),  # North
+                1: (-1, 1),  # Northeast
+                2: (0, 1),   # East
+                3: (1, 1),   # Southeast
+                4: (1, 0),   # South
+                5: (1, -1),  # Southwest
+                6: (0, -1),  # West
+                7: (-1, -1)  # Northwest
+            }
+            dx, dy = move_deltas[orientation]
+            new_x, new_y = x + dx, y + dy
+            
+            return (new_x, new_y, orientation)
 
 
     def goal_test(self, state):
