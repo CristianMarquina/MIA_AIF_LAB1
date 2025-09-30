@@ -2,19 +2,41 @@ from search import *
 
 class DrillingRobot(Problem):
     def __init__(self, file):
-        # TODO: Leer del archivo la matriz
-        map=[]
-        initial=()
-        goal=()
+        """Initializes the problem state from a given map file.
+        This constructor reads a text file that defines the terrain,
+        dimensions, initial state, and goal state for the drilling robot
+        problem.
+
+        Args:
+            file (str): The path to the input map file. 
+        """
         with open(file, 'r') as f:
             line =f.readline()
             parts=line.split()
-            
-            
-        self.map = # Matriz resultante de leer el archivo
-        self.initial=(3,3,1)
-        self.goal=(2,3,5)
-        super().__init__(initial, goal)
+            self.rows, self.cols = map(int, parts)
+            self.map = []
+            for _ in range(self.rows):
+                line = f.readline()
+                row_of_numbers = list(map(int, line.strip().split()))
+                self.map.append(row_of_numbers)
+
+            line = f.readline()
+            initial_state = tuple(map(int, line.strip().split()))
+
+            line = f.readline()
+            goal_state = tuple(map(int, line.strip().split()))
+
+        super().__init__(initial_state, goal_state)
+        self.orientation_map = {
+            0: (-1, 0),  # North
+            1: (-1, 1),  # Northeast
+            2: (0, 1),   # East
+            3: (1, 1),   # Southeast
+            4: (1, 0),   # South
+            5: (1, -1),  # Southwest
+            6: (0, -1),  # West
+            7: (-1, -1)  # Northwest
+        }
 
     def actions(self, state):
         """Return the actions that can be executed in the given
@@ -192,3 +214,15 @@ class EightPuzzle(Problem):
         h(n) = number of misplaced tiles """
 
         return sum(s != g for (s, g) in zip(node.state, self.goal))
+
+
+
+if __name__ == '__main__':
+    # Just for testing
+    robot_problem = DrillingRobot('exampleMap.txt')
+    print("Problem initialized successfully!")
+    print(f"Initial State: {robot_problem.initial}")
+    print(f"Goal State: {robot_problem.goal}")
+    print("Map:")
+    for row in robot_problem.map:
+        print(row)
