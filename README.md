@@ -30,7 +30,10 @@ Ensure you have the following installed:
     git clone https://github.com/CristianMarquina/MIA_AIF_LAB1.git
     cd MIA_AIF_LAB1
     ```
-
+2.  **Install dependencies**. This command reads the `requirements.txt` file and installs all the necessary libraries (`numpy` and `graphviz`) for the project to run.
+    ```bash
+    pip install -r requirements.txt
+    ```
 ---
 
 ## Usage
