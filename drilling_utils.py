@@ -53,8 +53,8 @@ def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
         # Print Node i
         if is_blind_search:
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, State: x={x}, y={y}, o={orientation})")
-        else: # A*
-            # Usamos el costo del nodo como h(n) para no re-calcular y asumir que h está almacenado en el nodo
+        else: # A*            
+            # We use the node cost as h(n) to avoid recalculation and assume that h is stored in the node
             h_val = node.h
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, h(n):{h_val}, State: x={x}, y={y}, o={orientation})")
 

@@ -56,7 +56,7 @@ def print_path_trace(solution_node, algorithm_name, is_blind_search):
         if is_blind_search:
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, State: x={x}, y={y}, o={orientation})")
         else: # A*
-            # Usamos el costo del nodo como h(n) para no re-calcular y asumir que h está almacenado en el nodo
+            # Use the node cost as h(n) to avoid recalculation and assume that h is stored in the node
             h_val = node.h
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, h(n):{h_val}, State: x={x}, y={y}, o={orientation})")
 
@@ -165,18 +165,19 @@ if __name__ == '__main__':
 
     # 3. Execute the three required algorithms
     ## Breadth-First Search (BFS)
+    ##TODO: CHECK if we need to have the 4 comments below
     breadth, gen, exp, edges, order = breadth_first_graph_search(problem)
     print_path_trace(breadth, "Breadth-First Search (BFS)", True)
-    draw_search_tree(gen, exp, edges, order, "bfs_tree", solution_node=breadth) # <-- Pasar el nodo solución
+    draw_search_tree(gen, exp, edges, order, "bfs_tree", solution_node=breadth) # <-- Pass the solution node
 
     # Depth-First Search (DFS)
     depth, gen, exp, edges, order = depth_first_graph_search(problem)
     print_path_trace(depth, "Depth-First Search (DFS)", True)
-    draw_search_tree(gen, exp, edges, order, "dfs_tree", solution_node=depth) # <-- Pasar el nodo solución
+    draw_search_tree(gen, exp, edges, order, "dfs_tree", solution_node=depth) # <-- Pass the solution node
 
     # A* Search
-    astar, gen, exp, edges, order = astar_search_with_log(problem) # Asegúrate de que astar_search devuelve 5 elementos
+    astar, gen, exp, edges, order = astar_search_with_log(problem) # Make sure astar_search returns 5 items
     print_path_trace(astar, "A* Search", False)
-    draw_search_tree(gen, exp, edges, order, "astar_tree", solution_node=astar) # <-- Pasar el nodo solución
+    draw_search_tree(gen, exp, edges, order, "astar_tree", solution_node=astar) # <-- Pass the solution node
 
     

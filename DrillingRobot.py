@@ -31,7 +31,7 @@ class DrillingRobot(Problem):
             goal_state = tuple(map(int, line.strip().split()))
 
         super().__init__(initial_state, goal_state)
-        # Orientación a cambio de coordenadas
+        # orientation_map: maps orientation index to (dx, dy) changes
         self.orientation_map = {
             0: (-1, 0),  # North
             1: (-1, 1),  # Northeast
@@ -98,15 +98,15 @@ class DrillingRobot(Problem):
         checking against a single self.goal is not enough."""
 
         x, y, orientation = state
-        
-        # El objetivo (self.goal) es (xt, yt, ot)
+
+        # The goal (self.goal) is (xt, yt, ot)
         gx, gy, go = self.goal
         
-        # 1. Comprobar si la posición (x, y) coincide
+        # 1. Check if the current position is the goal
         is_at_goal_location = (x == gx and y == gy)
-        
-        # 2. Comprobar la orientación:
-        # Es válida si: ot es 8 (irrelevante) O la orientación actual coincide con ot.
+
+        # 2. Check the orientation:
+        # It is valid if: ot is 8 (irrelevant) OR the current orientation matches ot.
         is_orientation_ok = (go == 8 or orientation == go)
         
         return is_at_goal_location and is_orientation_ok
@@ -124,7 +124,7 @@ class DrillingRobot(Problem):
         
         elif action == DRILL:
             new_x, new_y, _ = state2
-            # La dureza de la roca es el valor en la matriz del mapa
+            # The hardness of the rock is the value in the map matrix (the cost of drilling)
             return c + self.map[new_x][new_y]
         
         return c
@@ -209,7 +209,7 @@ class DrillingRobot(Problem):
         if go == 8:
             turns_end = 0
         else:
-            last_dirs = progress_dirs  # same idea: direction of last move
+            last_dirs = progress_dirs 
             turns_end = min(turn_dist(go, dir_map[d]) for d in last_dirs)
 
         turns_lb = max(turns_now, turns_end)
