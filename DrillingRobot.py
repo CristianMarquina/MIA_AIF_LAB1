@@ -1,4 +1,6 @@
 from search import *
+from drilling_utils import *
+from math import sqrt
 
 class DrillingRobot(Problem):
     def __init__(self, file):
@@ -19,6 +21,8 @@ class DrillingRobot(Problem):
                 line = f.readline()
                 row_of_numbers = list(map(int, line.strip().split()))
                 self.map.append(row_of_numbers)
+
+            self.min_hardness = min(min(row) for row in self.map)
 
             line = f.readline()
             initial_state = tuple(map(int, line.strip().split()))
@@ -48,7 +52,7 @@ class DrillingRobot(Problem):
         
 
         # At the beginig we asume that the 'drill' action is not possible
-        possible_actions = ['TURN_LEFT', 'TURN_RIGHT']
+        possible_actions = [TURN_LEFT, TURN_RIGHT]
 
         x, y, orientation = state
         
@@ -58,7 +62,7 @@ class DrillingRobot(Problem):
         
         # Verify if its possible to drill (map limits)
         if 0 <= new_x < self.rows and 0 <= new_y < self.cols:
-            possible_actions.append('DRILL')
+            possible_actions.append(DRILL)
             
         return possible_actions
     
@@ -70,17 +74,17 @@ class DrillingRobot(Problem):
 
         x, y, orientation = state
 
-        if action == 'TURN_LEFT':
+        if action == TURN_LEFT:
             # New orientation between 0 and 7
             new_orientation = (orientation - 1) % 8
             return (x, y, new_orientation)
         
-        elif action == 'TURN_RIGHT':
+        elif action == TURN_RIGHT:
             # New orientation between 0 and 7
             new_orientation = (orientation + 1) % 8
             return (x, y, new_orientation)
         
-        elif action == 'DRILL':
+        elif action == DRILL:
             dx, dy = self.orientation_map[orientation]
             new_x, new_y = x + dx, y + dy
             
@@ -115,17 +119,16 @@ class DrillingRobot(Problem):
         state2. If the path does matter, it will consider c and maybe state1
         and action. The default method costs 1 for every step in the path."""
 
-        if action == 'TURN_LEFT' or action == 'TURN_RIGHT':
+        if action == TURN_LEFT or action == TURN_RIGHT:
             return c + 1
         
-        elif action == 'DRILL':
+        elif action == DRILL:
             new_x, new_y, _ = state2
             # La dureza de la roca es el valor en la matriz del mapa
             return c + self.map[new_x][new_y]
         
         return c
     
-
     def h(self, node):
         """ Return the heuristic value for a given state. Default heuristic function used is 
         the Manhattan distance """
@@ -134,4 +137,162 @@ class DrillingRobot(Problem):
         gx, gy, _ = self.goal
 
         return abs(x - gx) + abs(y - gy)
+    
+    def h_chebyshev(self, node):
+        x, y, _ = node.state
+        gx, gy, _ = self.goal
+        return max(abs(x - gx), abs(y - gy))
+    
+    def h_euclidean(self, node):
+        x, y, _ = node.state
+        gx, gy, _ = self.goal
+        return sqrt((x - gx)**2 + (y - gy)**2)
+    
+    def h_minhardness(self, node):
+        x, y, _ = node.state
+        gx, gy, _ = self.goal
+        chebyshev = max(abs(x - gx), abs(y - gy))
+        return chebyshev * self.min_hardness
+    
+    def h_combined(self, node):
+        """
+        Combined heuristic: (Chebyshev distance * min_hardness) + orientation adjustment.
+        
+        - The first term estimates the minimum drilling cost assuming each move
+        costs at least the minimum rock hardness value in the map.
+        - The second term adds a lower bound on the number of turns required,
+        considering both the current and goal orientations.
+        
+        This heuristic is admissible and suitable for 8-directional movement
+        with rotation cost = 1 and drilling cost >= min_hardness.
+        """
+        x, y, o = node.state
+        gx, gy, go = self.goal
+
+        # --- 1) Drilling cost lower bound (Chebyshev * min hardness) ---
+        dx, dy = gx - x, gy - y
+        adx, ady = abs(dx), abs(dy)
+        chebyshev = max(adx, ady)
+        drill_lb = chebyshev * self.min_hardness
+
+        # Early return if already at goal position
+        if adx == 0 and ady == 0:
+            if go == 8:  # orientation irrelevant
+                return 0
+            diff = abs(o - go) % 8
+            return min(diff, 8 - diff)
+
+        # --- 2) Orientation adjustment (turns) ---
+        # Minimal turns to align with a direction that moves closer to goal
+        turn_dist = lambda a, b: min((a - b) % 8, (b - a) % 8)
+        sgn = lambda v: (v > 0) - (v < 0)
+
+        # Possible progress direction(s)
+        sx, sy = sgn(dx), sgn(dy)
+        if adx > ady:
+            progress_dirs = [(sx, 0)]
+        elif ady > adx:
+            progress_dirs = [(0, sy)]
+        else:
+            progress_dirs = [(sx, sy)]
+
+        # Map (signs) → orientation index
+        dir_map = {
+            (-1,  0): 0, (-1,  1): 1, (0, 1): 2, (1, 1): 3,
+            (1,  0): 4, (1, -1): 5, (0, -1): 6, (-1, -1): 7
+        }
+
+        # Minimum turns to start progressing
+        turns_now = min(turn_dist(o, dir_map[d]) for d in progress_dirs)
+
+        # Minimum turns required at goal (if orientation matters)
+        if go == 8:
+            turns_end = 0
+        else:
+            last_dirs = progress_dirs  # same idea: direction of last move
+            turns_end = min(turn_dist(go, dir_map[d]) for d in last_dirs)
+
+        turns_lb = max(turns_now, turns_end)
+
+        # --- 3) Final combined heuristic ---
+        return drill_lb + turns_lb
+
+    
+    def h2(self, node):
+        """
+        Heuristic = (Chebyshev distance * min_hardness) + orientation lower bound,
+        where the orientation term is max(turns_to_start_progress, turns_needed_at_goal).
+        """
+        x, y, o = node.state
+        gx, gy, go = self.goal
+
+        dx, dy = gx - x, gy - y
+        adx, ady = abs(dx), abs(dy)
+
+        # --- Drilling lower bound (Chebyshev steps * min hardness) ---
+        chebyshev = max(adx, ady)
+        drill_lb = chebyshev * self.min_hardness
+
+        # Early exit if already at goal cell
+        if chebyshev == 0:
+            # If a specific final orientation is required, pay turns to align; else 0
+            if go == 8:
+                return 0
+            # turn distance without helpers
+            diff = abs(o - go) % 8
+            turns = min(diff, 8 - diff)
+            return turns
+
+        # Local helpers (lambdas) to avoid extra methods
+        turn_dist = lambda a, b: min((a - b) % 8, (b - a) % 8)
+        sgn = lambda v: (v > 0) - (v < 0)
+
+        # Map (sign(dx), sign(dy)) -> orientation index (same convention as orientation_map)
+        dir_from_signs = {
+            (-1,  0): 0,  # N
+            (-1,  1): 1,  # NE
+            ( 0,  1): 2,  # E
+            ( 1,  1): 3,  # SE
+            ( 1,  0): 4,  # S
+            ( 1, -1): 5,  # SW
+            ( 0, -1): 6,  # W
+            (-1, -1): 7,  # NW
+        }
+
+        sx, sy = sgn(dx), sgn(dy)
+
+        # --- Directions that reduce Chebyshev on the next step (progress dirs) ---
+        progress_dirs = set()
+        if adx > ady:
+            progress_dirs.add(dir_from_signs[(sgn(dx), 0)])
+        elif ady > adx:
+            progress_dirs.add(dir_from_signs[(0, sgn(dy))])
+        else:  # adx == ady != 0 -> only the exact diagonal reduces Chebyshev
+            progress_dirs.add(dir_from_signs[(sx, sy)])
+
+        # Minimum turns to start progressing from current orientation
+        turns_now = min(turn_dist(o, d) for d in progress_dirs) if progress_dirs else 0
+
+        # --- Turns needed at the end (if goal orientation is constrained) ---
+        if go == 8:
+            turns_end = 0
+        else:
+            # Possible orientations for the LAST step to land exactly on (gx, gy)
+            last_dirs = set()
+            if adx > ady:
+                last_dirs.add(dir_from_signs[(sgn(dx), 0)])
+            elif ady > adx:
+                last_dirs.add(dir_from_signs[(0, sgn(dy))])
+            else:
+                last_dirs.add(dir_from_signs[(sx, sy)])
+
+            # If for some reason no last_dirs (shouldn't happen here), fall back to aligning at end
+            if last_dirs:
+                turns_end = min(turn_dist(go, d) for d in last_dirs)
+            else:
+                turns_end = turn_dist(o, go)
+
+        turns_lb = max(turns_now, turns_end)
+
+        return drill_lb + turns_lb
         

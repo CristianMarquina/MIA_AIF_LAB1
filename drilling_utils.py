@@ -1,6 +1,7 @@
-from DrillingRobot import DrillingRobot
-from search import breadth_first_graph_search, depth_first_graph_search, astar_search, Node
-
+# Consts for DrillingRobot actions
+TURN_RIGHT = "TURN_RIGHT"
+TURN_LEFT = "TURN_LEFT"
+DRILL = "DRILL"
 
 # Mapping to show orientation in a readable format
 ORIENTATION_NAMES = {
@@ -8,8 +9,7 @@ ORIENTATION_NAMES = {
     4: 'South (4)', 5: 'Southwest (5)', 6: 'West (6)', 7: 'Northwest (7)'
 }
 
-
-def print_path_trace(solution_node, algorithm_name, is_blind_search):
+def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
     """
     Prints the execution trace of the found solution,
     following the format requested in Section 4.2 of the statement.
@@ -64,37 +64,5 @@ def print_path_trace(solution_node, algorithm_name, is_blind_search):
     print(f"Node {len(path) - 1} (final node)")
     print(f"Total path cost (g): {solution_node.path_cost}")
     print("-" * 60)
-
-
-if __name__ == '__main__':
-
-    # 1. Define the map path 
-    mapa = "mapa.txt" 
-    
-    # 2. Create an instance of the problem
-    try:
-        problem = DrillingRobot(mapa)
-    except FileNotFoundError:
-        print(f"ERROR: Map file '{mapa}' not found. Please check the path.")
-        exit()
-    except Exception as e:
-        print(f"An error occurred while loading the map: {e}")
-        exit()
-        
-    print(f"Problem loaded: From {problem.initial} to {problem.goal}")
-
-
-    # 3. Execute the three required algorithms
-    # Breadth-First Search (BFS)
-    breadth = breadth_first_graph_search(problem)
-    print_path_trace(breadth, "Breadth-First Search (BFS)", True)
-
-    # Depth-First Search (DFS)
-    depth = depth_first_graph_search(problem)
-    print_path_trace(depth, "Depth-First Search (DFS)", True)
-
-    # 3.3. A* Search
-    astar = astar_search(problem)
-    print_path_trace(astar, "A* Search", False)
 
     
