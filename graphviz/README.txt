@@ -1,0 +1,2 @@
+Functions depth_first_graph_search, breadth_first_graph_search were changed
+Function astar_search_with_log was created
