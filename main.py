@@ -22,10 +22,19 @@ if __name__ == '__main__':
         help="Heuristic function to use with A* (optional)."
     )
 
+    parser.add_argument(
+    "-a", "--algorithm",
+    type=str,
+    required=True,
+    choices=['bfs', 'dfs', 'astar'],
+    help="The search algorithm to run (bfs, dfs, or astar)."
+  )
+
     args = parser.parse_args()
 
     map_path = args.map_path
     heuristic_choice = args.heuristic.lower()
+    algorithm_choice = args.algorithm.lower()
 
     # -------------------------------
     # 2. Create problem instance
@@ -46,7 +55,41 @@ if __name__ == '__main__':
     # 3. Run search algorithms
     # -------------------------------
     # Breadth-First Search (BFS)
-    breadth = breadth_first_graph_search(problem)
+
+    solution_node = None
+    algorithm_name = ""
+    is_blind = False
+
+    if algorithm_choice == 'bfs':
+        solution_node = breadth_first_graph_search(problem)
+        algorithm_name = "Breadth-First Search (BFS)"
+        is_blind = True
+
+    elif algorithm_choice == 'dfs':
+        solution_node = depth_first_graph_search(problem)
+        algorithm_name = "Depth-First Search (DFS)"
+        is_blind = True
+
+    elif algorithm_choice == 'astar':
+        if heuristic_choice == "default":
+            solution_node = astar_search(problem)
+        elif hasattr(problem, heuristic_choice):
+            heuristic_func = getattr(problem, heuristic_choice)
+            solution_node = astar_search(problem, h=heuristic_func)
+        else:
+            print(f"Warning: Heuristic '{heuristic_choice}' not found. Using default.")
+            solution_node = astar_search(problem)
+        
+        algorithm_name = f"A* Search (heuristic: {heuristic_choice})"
+        is_blind = False
+    
+    print_path_trace(problem, solution_node, algorithm_name, is_blind)
+
+
+
+
+
+    """breadth = breadth_first_graph_search(problem)
     print_path_trace(problem, breadth, "Breadth-First Search (BFS)", True)
 
     # Depth-First Search (DFS)
@@ -66,4 +109,4 @@ if __name__ == '__main__':
             print(f"Warning: Heuristic '{heuristic_choice}' not found. Using default heuristic.")
             astar = astar_search(problem)
 
-    print_path_trace(problem, astar, "A* Search", False)
+    print_path_trace(problem, astar, "A* Search", False)"""
