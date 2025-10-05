@@ -1,4 +1,5 @@
 # MIA_AIF_LAB1
+
 This repository is for solving the problem from Lab 1 of the AIF course.
 
 ## Project Description
@@ -6,10 +7,14 @@ This repository is for solving the problem from Lab 1 of the AIF course.
 This project consists of the implementation and comparison of Artificial Intelligence search algorithms to solve a pathfinding problem. The objective is to find the minimum-cost path for a drilling robot from a starting point to a target location on a terrain with varying levels of hardness, respecting the robot's movement and orientation constraints.
 
 The following algorithms are implemented and compared:
+
 * **Blind Search**:
+
     * Breadth-First Search (BFS)
     * Depth-First Search (DFS)
+
 * **Informed Search**:
+
     * A* (A-Star)
 
 ---
@@ -21,6 +26,7 @@ Follow these steps to set up and run the project on your local machine.
 ### Prerequisites
 
 Ensure you have the following installed:
+
 * Python 3.8 or higher
 
 ### Installation

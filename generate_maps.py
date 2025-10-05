@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import random
+import re
 from pathlib import Path
+from typing import Optional
+
+FILENAME_RE = re.compile(r"^map(\d+)\.txt$")
 
 def generate_map(n: int, hmin: int, hmax: int) -> list[list[int]]:
     """Generate an n x n grid with integer hardness values in [hmin, hmax]."""
@@ -16,16 +20,38 @@ def write_map_file(path: Path, grid: list[list[int]], start: tuple[int,int,int],
         # 2) Terrain hardness grid
         for row in grid:
             f.write(" ".join(str(v) for v in row) + "\n")
-        # 3) Initial position and orientation
+        # 3) Initial position and orientation (x y o)
         sx, sy, so = start
         f.write(f"{sx} {sy} {so}\n")
-        # 4) Goal position and orientation
+        # 4) Goal position and orientation (x y o)
         gx, gy, go = goal
         f.write(f"{gx} {gy} {go}\n")
 
+def find_next_id(subdir: Path) -> int:
+    """
+    Scan `subdir` for files named map{id}.txt, return max(id)+1.
+    If none found, return 1.
+    """
+    max_id = 0
+    if not subdir.exists():
+        return 1
+    for p in subdir.iterdir():
+        if p.is_file():
+            m = FILENAME_RE.match(p.name)
+            if m:
+                try:
+                    idx = int(m.group(1))
+                    if idx > max_id:
+                        max_id = idx
+                except ValueError:
+                    # Ignore malformed names like mapXYZ.txt
+                    pass
+    return max_id + 1 if max_id >= 1 else 1
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate random map files for the DrillingRobot problem."
+        description="Generate random map files for the DrillingRobot problem, "
+                    "continuing map IDs based on existing files."
     )
     parser.add_argument(
         "--sizes",
@@ -64,7 +90,7 @@ def main():
         "--outdir",
         type=Path,
         default=Path("maps"),
-        help="Root output directory for the generated map files. Default: ./maps",
+        help="Root output directory. Subfolders N{N}x{N} will be created. Default: ./maps",
     )
     parser.add_argument(
         "--seed",
@@ -74,35 +100,50 @@ def main():
     )
     args = parser.parse_args()
 
-    # Apply random seed if provided
+    # Validations
+    if args.hardness_min > args.hardness_max:
+        parser.error("--hardness-min cannot be greater than --hardness-max")
+    for n in args.sizes:
+        if n <= 0:
+            parser.error("All sizes must be positive integers")
+
+    # Seed
     if args.seed is not None:
         random.seed(args.seed)
 
-    # Ensure base directory exists
+    # Ensure base dir
     args.outdir.mkdir(parents=True, exist_ok=True)
 
-    # --- Generate maps ---
+    # Generate per size
     for n in args.sizes:
         subdir = args.outdir / f"N{n}x{n}"
         subdir.mkdir(parents=True, exist_ok=True)
 
-        for i in range(1, args.per_size + 1):
+        # Determine starting id based on existing map{id}.txt files
+        start_id = find_next_id(subdir)
+
+        # Fixed start (0,0,North=0) per spec
+        start_state = (0, 0, 0)
+
+        # Generate maps
+        for k in range(args.per_size):
             grid = generate_map(n, args.hardness_min, args.hardness_max)
-
-            # Start fixed as (0, 0, North=0)
-            start = (0, 0, 0)
-
-            # Goal orientation (random 0–8 if not provided)
             goal_orientation = args.goal_orientation if args.goal_orientation is not None else random.randint(0, 8)
-            goal = (n - 1, n - 1, goal_orientation)
+            goal_state = (n - 1, n - 1, goal_orientation)
 
-            # Example: maps/N3x3/map1.txt
-            filename = f"map{i}.txt"
-            path = subdir / filename
+            file_id = start_id + k
+            path = subdir / f"map{file_id}.txt"
 
-            write_map_file(path, grid, start, goal)
+            # Safety: never overwrite unexpectedly
+            if path.exists():
+                # Extremely unlikely if start_id was computed correctly, but safe-guard anyway
+                # Skip to next available id
+                while path.exists():
+                    file_id += 1
+                    path = subdir / f"map{file_id}.txt"
 
-            print(f"✓ Generated: {path} (goal orientation = {goal_orientation})")
+            write_map_file(path, grid, start_state, goal_state)
+            print(f"Generated: {path}")
 
 if __name__ == "__main__":
     main()

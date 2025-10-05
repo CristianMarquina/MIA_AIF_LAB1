@@ -1,7 +1,10 @@
 import argparse
+import csv
+from pathlib import Path
 from DrillingRobot import DrillingRobot
 from drilling_utils import *
 from search import breadth_first_graph_search, depth_first_graph_search, astar_search
+
 
 if __name__ == '__main__':
     # -------------------------------
@@ -21,20 +24,26 @@ if __name__ == '__main__':
         default="default",
         help="Heuristic function to use with A* (optional)."
     )
-
     parser.add_argument(
-    "-a", "--algorithm",
-    type=str,
-    required=True,
-    choices=['bfs', 'dfs', 'astar'],
-    help="The search algorithm to run (bfs, dfs, or astar)."
-  )
+        "-a", "--algorithm",
+        type=str,
+        required=True,
+        choices=['bfs', 'dfs', 'astar'],
+        help="The search algorithm to run (bfs, dfs, or astar)."
+    )
+    parser.add_argument(
+        "-o", "--output",
+        type=str,
+        default=None,
+        help="Optional path to a CSV file where the results will be saved."
+    )
 
     args = parser.parse_args()
 
     map_path = args.map_path
     heuristic_choice = args.heuristic.lower()
     algorithm_choice = args.algorithm.lower()
+    output_path = args.output
 
     # -------------------------------
     # 2. Create problem instance
@@ -52,10 +61,8 @@ if __name__ == '__main__':
     print(f"Heuristic selected: {heuristic_choice}")
 
     # -------------------------------
-    # 3. Run search algorithms
+    # 3. Run the selected algorithm
     # -------------------------------
-    # Breadth-First Search (BFS)
-
     solution_node = None
     algorithm_name = ""
     is_blind = False
@@ -85,28 +92,44 @@ if __name__ == '__main__':
     
     print_path_trace(problem, solution_node, algorithm_name, is_blind)
 
+    # -------------------------------
+    # 4. Collect performance metrics
+    # -------------------------------
+    d = getattr(solution_node, "depth", None)
+    g = getattr(solution_node, "path_cost", None)
+    explored = getattr(problem, "expanded_nodes", None)
+    frontier = getattr(problem, "final_frontier", None)
 
+    print("\n--- Search Statistics ---")
+    print(f"d (solution depth): {d}")
+    print(f"g (solution cost): {g}")
+    print(f"#E (expanded nodes): {explored}")
+    print(f"#F (final frontier size): {frontier}")
 
+    # -------------------------------
+    # 5. Save results to CSV (optional)
+    # -------------------------------
+    if output_path:
+        try:
+            output_file = Path(output_path)
+            write_header = not output_file.exists()
 
+            row = {
+                'map': map_path,
+                'algorithm': algorithm_choice,
+                'heuristic': heuristic_choice if algorithm_choice == 'astar' else 'N/A',
+                'd': d,
+                'g': g,
+                '#E': explored,
+                '#F': frontier,
+            }
 
-    """breadth = breadth_first_graph_search(problem)
-    print_path_trace(problem, breadth, "Breadth-First Search (BFS)", True)
+            with open(output_file, 'a', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=row.keys())
+                if write_header:
+                    writer.writeheader()
+                writer.writerow(row)
 
-    # Depth-First Search (DFS)
-    depth = depth_first_graph_search(problem)
-    print_path_trace(problem, depth, "Depth-First Search (DFS)", True)
-
-    # A* Search
-    if heuristic_choice == "default":
-        astar = astar_search(problem)
-    else:
-        # You can extend this to support custom heuristics
-        # Example: if the class has multiple heuristic methods
-        if hasattr(problem, heuristic_choice):
-            heuristic_func = getattr(problem, heuristic_choice)
-            astar = astar_search(problem, h=heuristic_func)
-        else:
-            print(f"Warning: Heuristic '{heuristic_choice}' not found. Using default heuristic.")
-            astar = astar_search(problem)
-
-    print_path_trace(problem, astar, "A* Search", False)"""
+            print(f"\nResults saved to {output_path}")
+        except Exception as e:
+            print(f"Could not save results to CSV: {e}")
