@@ -67,7 +67,7 @@ python main.py <map_path> -a astar --heuristic <heuristic>
 
 To print the search tree, add --draw-tree:
 ```bash
-python main.py <map_path> -a astar --heuristic h --draw-tree
+python main.py <map_path> -a astar --heuristic <heuristic> --draw-tree
 ```
 
 
