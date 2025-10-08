@@ -3,7 +3,7 @@ import csv
 from pathlib import Path
 from DrillingRobot import DrillingRobot
 from drilling_utils import *
-from search import breadth_first_graph_search, depth_first_graph_search, astar_search
+from search import breadth_first_graph_search, depth_first_graph_search, astar_search_with_log
 
 
 if __name__ == '__main__':
@@ -37,6 +37,12 @@ if __name__ == '__main__':
         default=None,
         help="Optional path to a CSV file where the results will be saved."
     )
+    # Visualization of the tree
+    parser.add_argument(
+        "--draw-tree",
+        action="store_true",
+        help="If set, visualizes the search tree after the algorithm finishes."
+    )
 
     args = parser.parse_args()
 
@@ -44,6 +50,7 @@ if __name__ == '__main__':
     heuristic_choice = args.heuristic.lower()
     algorithm_choice = args.algorithm.lower()
     output_path = args.output
+    draw_tree = args.draw_tree
 
     # -------------------------------
     # 2. Create problem instance
@@ -68,24 +75,24 @@ if __name__ == '__main__':
     is_blind = False
 
     if algorithm_choice == 'bfs':
-        solution_node = breadth_first_graph_search(problem)
+        solution_node, gen, exp, edges, order = breadth_first_graph_search(problem)
         algorithm_name = "Breadth-First Search (BFS)"
         is_blind = True
 
     elif algorithm_choice == 'dfs':
-        solution_node = depth_first_graph_search(problem)
+        solution_node, gen, exp, edges, order = depth_first_graph_search(problem)
         algorithm_name = "Depth-First Search (DFS)"
         is_blind = True
 
     elif algorithm_choice == 'astar':
         if heuristic_choice == "default":
-            solution_node = astar_search(problem)
+            solution_node, gen, exp, edges, order = astar_search_with_log(problem)
         elif hasattr(problem, heuristic_choice):
             heuristic_func = getattr(problem, heuristic_choice)
-            solution_node = astar_search(problem, h=heuristic_func)
+            solution_node, gen, exp, edges, order = astar_search_with_log(problem, h=heuristic_func)
         else:
             print(f"Warning: Heuristic '{heuristic_choice}' not found. Using default.")
-            solution_node = astar_search(problem)
+            solution_node, gen, exp, edges, order = astar_search_with_log(problem)
         
         algorithm_name = f"A* Search (heuristic: {heuristic_choice})"
         is_blind = False
@@ -107,7 +114,32 @@ if __name__ == '__main__':
     print(f"#F (final frontier size): {frontier}")
 
     # -------------------------------
-    # 5. Save results to CSV (optional)
+    # 5. Visualize Search Tree (optional)
+    # -------------------------------
+    if draw_tree:
+        if solution_node and gen and exp and edges and order:
+            # Genera un nombre de archivo dinámico
+            filename = algorithm_choice
+            if algorithm_choice == 'astar':
+                filename += f"_{heuristic_choice}"
+            filename += "_tree"
+            
+            print(f"\n--- Visualizing Search Tree ---")
+            print(f"Drawing tree to {filename}.png...")
+
+            try:
+                # Llama a la función con los 5 argumentos del árbol + solution_node
+                draw_search_tree(gen, exp, edges, order, filename, solution_node=solution_node)
+            except NameError:
+                print("ERROR: The 'draw_search_tree' function is not available or was not imported correctly.")
+            except Exception as e:
+                print(f"An error occurred while drawing the tree: {e}")
+        else:
+            print("\nVisualization skipped: Missing solution node or tree generation data (gen, exp, edges, order).")
+
+
+    # -------------------------------
+    # 6. Save results to CSV (optional)
     # -------------------------------
     if output_path:
         try:

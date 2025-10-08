@@ -84,6 +84,9 @@ class Node:
         self.depth = 0
         if parent:
             self.depth = parent.depth + 1
+        
+        # *** NEW: Atributo para registrar el orden de expansión ***
+        self.expansion_order = 0 
 
     def __repr__(self):
         return "<Node {}>".format(self.state)
@@ -214,47 +217,95 @@ def depth_first_tree_search(problem):
 
 
 def depth_first_graph_search(problem):
-    """
-    [Figure 3.7]
+    """[Figure 3.7]
     Search the deepest nodes in the search tree first.
     Search through the successors of a problem to find a goal.
     The argument frontier should be an empty queue.
-    Does not get trapped by loops.
-    If two paths reach a state, only use the first one.
     """
-    frontier = [(Node(problem.initial))]  # Stack
+    node = Node(problem.initial)
+    
+    # New registers for the visualization
+    expanded = set()
+    generated = {node}
+    edges = []
+    node_list_in_order = [node] # LIFO order (se añade al expandir)
+    counter = 1
+    
+    if problem.goal_test(node.state):
+        return node, generated, expanded, edges, node_list_in_order
 
-    explored = set()
+    frontier = [node]  # Stack
+    explored = {node.state}
+
     while frontier:
         node = frontier.pop()
-        if problem.goal_test(node.state):
-            return node
-        explored.add(node.state)
-        frontier.extend(child for child in node.expand(problem)
-                        if child.state not in explored and child not in frontier)
-    return None
+        
+        # Expansion register
+        expanded.add(node)
+        
+        # The generated nodes are computed here in the order they have been stacked (LIFO)
+        for child in node.expand(problem):
+            if child.state not in explored:
+                explored.add(child.state)
+                generated.add(child)
+                edges.append((node, child))
+                
+                # Expansion and rele¡ation register
+                child.expansion_order = counter
+                counter += 1
+                node_list_in_order.append(child)
+                
+                if problem.goal_test(child.state):
+                    return child, generated, expanded, edges, node_list_in_order
+                frontier.append(child)
+
+    return None, generated, expanded, edges, node_list_in_order
 
 
 def breadth_first_graph_search(problem):
     """[Figure 3.11]
-    Note that this function can be implemented in a
-    single line as below:
-    return graph_search(problem, FIFOQueue())
+    This function was modified to return a node list in the generation order 
+    (FIFO) for the correct visualization of the tree
     """
     node = Node(problem.initial)
+    
+    # FIFO order
+    node_list_in_order = [node] 
+
     if problem.goal_test(node.state):
-        return node
+        # Return the list if the goal is the initial state
+        return node, {node}, set(), [], node_list_in_order 
+
     frontier = deque([node])
     explored = set()
+    generated = {node}
+    expanded = set()
+    edges = []
+    expansion_order = {}
+    counter = 1
+
     while frontier:
         node = frontier.popleft()
+        expanded.add(node)
         explored.add(node.state)
         for child in node.expand(problem):
-            if child.state not in explored and child not in frontier:
+
+            is_in_frontier = any(n.state == child.state for n in frontier) 
+            
+            if child.state not in explored and not is_in_frontier:
+                generated.add(child)
+                edges.append((node, child))
+                expansion_order[(node, child)] = counter
+                counter += 1
+                
+                #Stack the nodes in the same order as the generation
+                node_list_in_order.append(child) 
+                
                 if problem.goal_test(child.state):
-                    return child
+                    return child, generated, expanded, edges, node_list_in_order
                 frontier.append(child)
-    return None
+
+    return None, generated, expanded, edges, node_list_in_order
 
 
 def best_first_graph_search(problem, f, display=False):
@@ -418,6 +469,69 @@ def astar_search(problem, h=None, display=False):
     else in your Problem subclass."""
     h = memoize(h or problem.h, 'h')
     return best_first_graph_search(problem, lambda n: n.path_cost + h(n), display)
+
+
+def astar_search_with_log(problem, h=None):
+    """A* con registro de nodos generados/expandidos."""
+    h = memoize(h or problem.h, 'h')
+
+    # Cost function f(n) 
+    f = lambda n: n.path_cost + h(n)
+    
+    # New registers for visualization
+    expanded = set()
+    generated = set()
+    edges = []
+    node_list_in_order = []
+    counter = 1
+
+
+    node = Node(problem.initial)
+    generated.add(node)
+    node_list_in_order.append(node)
+    node.expansion_order = 0 
+    
+    frontier = PriorityQueue('min', f)
+    frontier.append(node)
+    explored = {node.state: node} # explored saves the best node (less cost g) for each state
+    
+
+    while frontier:
+        node = frontier.pop()
+        
+        # Expansion register
+        expanded.add(node)
+        
+        if problem.goal_test(node.state):
+            return node, generated, expanded, edges, node_list_in_order
+        
+        for child in node.expand(problem):
+            s = child.state
+            
+            # New path cost
+            g = child.path_cost
+            
+            # If its a new node or a better path
+            if s not in explored or g < explored[s].path_cost:
+                
+                # If the node was known, update it
+                if s in explored:
+                    del frontier[explored[s]]
+                
+                explored[s] = child
+                generated.add(child)
+                
+                # Expansion and relation register
+                child.expansion_order = counter
+                counter += 1
+                node_list_in_order.append(child)
+                
+                if child.parent:
+                    edges.append((child.parent, child))
+                
+                frontier.append(child)
+    
+    return None, generated, expanded, edges, node_list_in_order
 
 
 # ______________________________________________________________________________

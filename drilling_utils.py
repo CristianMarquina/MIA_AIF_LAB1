@@ -1,3 +1,6 @@
+from graphviz import Digraph
+from collections import defaultdict
+
 # Consts for DrillingRobot actions
 TURN_RIGHT = "TURN_RIGHT"
 TURN_LEFT = "TURN_LEFT"
@@ -65,4 +68,73 @@ def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
     print(f"Total path cost (g): {solution_node.path_cost}")
     print("-" * 60)
 
+
+def draw_search_tree(gen, exp, edges, node_list_in_order, filename, solution_node=None):
     
+    # 0. Crear un mapa Estado -> Objeto Node para obtener la información de forma robusta
+    state_to_node_map = {node.state: node for node in gen}
+    
+    # --- CONFIGURATION ---
+    dot = Digraph(comment='Search Tree', 
+                   graph_attr={
+                       'rankdir': 'TB',          # Top to Bottom
+                       'splines': 'polyline',    # Líneas rectas (menos cruces)
+                       'overlap': 'false',       # Evita que los nodos se superpongan
+                       'dpi': '150',
+                       'ranksep': '1.5',         # Gran separación vertical (CRÍTICO para A*)
+                       'nodesep': '0.7',         # Separación horizontal
+                       'concentrate': 'false'    # No concentrar aristas
+                   }, 
+                   node_attr={'shape': 'box', 'width': '2.2', 'height': '0.9', 'fixedsize': 'true', 'style': 'filled'}, 
+                   edge_attr={
+                       'fontsize': '13',          
+                       'labelfloat': 'true',
+                       'labeldistance': '2.5',   
+                       'labelangle': '-20'
+                   })
+    
+    ordered_depth_groups = defaultdict(list)
+    
+    # --- COLOR LOGIC ---
+    solution_path_states = set()
+    if solution_node:
+        # States in the solution path
+        solution_path_states = {n.state for n in solution_node.path()} 
+        
+    # Expanded states
+    expanded_states = {n.state for n in exp}
+
+    # 1. Compute all the nodes
+    for item in node_list_in_order:
+        node_state = item.state if hasattr(item, 'state') else item
+        
+        if node_state not in state_to_node_map:
+             continue 
+        
+        node = state_to_node_map[node_state]
+        node_key = str(node_state)
+        
+        # Color definition
+        color = 'lightblue' # Generated, not expanded
+        if node_state in expanded_states:
+            color = 'lightcoral' # Expanded
+        if node_state in solution_path_states:
+            color = 'lightgreen' # Solution
+            
+        # Generation of the lable for each node
+        label = (f'#{node.expansion_order}\n'
+                 f'S: {node.state}\n'
+                 f'd: {node.depth}\n'
+                 f'g(n): {node.path_cost:.1f}')
+    
+        
+        dot.node(node_key, label=label, style='filled', fillcolor=color)
+        
+        ordered_depth_groups[node.depth].append(node_key)
+
+    # 2. Draw the edges
+    for parent, child in edges:
+        dot.edge(str(parent.state), str(child.state), label=str(child.action))
+
+    dot.render(filename, format="png", cleanup=True)
+    print(f"Árbol guardado en {filename}.png")
