@@ -51,3 +51,25 @@ The main script is executed from the command line, allowing you to specify the m
 The general format for running a search is:
 ```bash
 python main.py <map_path> -a <algorithm>
+```
+
+If the selected search is the A*, the default heuristic is the Manhattan distance, but ther are more heuristics avaliable:
+
+1. Default -> Manhattan distance
+2. h_chebyshev -> Chebyshev distance
+3. h_euclidean -> Euclidean distance
+4. h_minhardness -> Chebyshev distance with information about the hardness
+5. h_combined -> Combined heuristic: (Chebyshev distance * min_hardness) + orientation adjustment
+
+```bash
+python main.py <map_path> -a astar --heuristic <heuristic>
+```
+
+To print the search tree, add --draw-tree:
+```bash
+python main.py <map_path> -a astar --heuristic h --draw-tree
+```
+
+
+
+
