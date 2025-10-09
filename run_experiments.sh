@@ -5,6 +5,7 @@
 # 2) For each subfolder in maps/, run bfs, dfs, and astar
 #    For astar, run multiple heuristics
 # 3) Save one CSV per subfolder inside results/
+# 4) Generate summary tables (A* heuristics + algorithm comparison)
 # ============================================================
 
 set -e
@@ -13,6 +14,11 @@ MAIN_SCRIPT="main.py"
 GEN_SCRIPT="generate_maps.py"
 MAPS_DIR="maps"
 RESULTS_DIR="results"
+
+# Table-generation scripts
+ASTAR_TABLES_SCRIPT="generate_astar_tables.py"
+ALG_TABLES_SCRIPT="generate_alg_tables.py"
+ALG_HEUR="h_combined"
 
 # Algorithms and heuristics to test
 ALGORITHMS=("bfs" "dfs" "astar")
@@ -90,4 +96,19 @@ for SUBDIR in "$MAPS_DIR"/*; do
   fi
 done
 
-echo "All experiments completed successfully."
+# --- Step 5: Generate summary tables ----------------------------------------
+echo "Generating A* heuristic tables..."
+if [ ! -f "$ASTAR_TABLES_SCRIPT" ]; then
+  echo "ERROR: $ASTAR_TABLES_SCRIPT not found."
+  exit 1
+fi
+python3 "$ASTAR_TABLES_SCRIPT"
+
+echo "Generating algorithm-comparison tables (A* heuristic = $ALG_HEUR)..."
+if [ ! -f "$ALG_TABLES_SCRIPT" ]; then
+  echo "ERROR: $ALG_TABLES_SCRIPT not found."
+  exit 1
+fi
+python3 "$ALG_TABLES_SCRIPT" -H "$ALG_HEUR"
+
+echo "All experiments and table generations completed successfully."

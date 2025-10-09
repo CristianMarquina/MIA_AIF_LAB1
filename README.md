@@ -23,12 +23,6 @@ The following algorithms are implemented and compared:
 
 Follow these steps to set up and run the project on your local machine.
 
-### Prerequisites
-
-Ensure you have the following installed:
-
-* Python 3.8 or higher
-
 ### Installation
 
 1.  **Clone the repository** to your local machine:
@@ -36,40 +30,122 @@ Ensure you have the following installed:
     git clone https://github.com/CristianMarquina/MIA_AIF_LAB1.git
     cd MIA_AIF_LAB1
     ```
-2.  **Install dependencies**. This command reads the `requirements.txt` file and installs all the necessary libraries (`numpy` and `graphviz`) for the project to run.
+2.  **Install dependencies**. This command reads the `requirements.txt` file and installs all the necessary libraries for the project to run.
     ```bash
     pip install -r requirements.txt
     ```
 ---
 
-## Usage
+## Usage Guide
 
-The main script is executed from the command line, allowing you to specify the map file and the desired search algorithm.
+The main entry point of the project is the `main.py` script, which runs a selected search algorithm (BFS, DFS, or A*) on a specific map file.  
+It can be executed directly from the command line, allowing you to define the map path, the algorithm, and optionally, the heuristic and an output file for saving results.
 
 ### Command Structure
 
-The general format for running a search is:
+The general syntax is:
 ```bash
 python main.py <map_path> -a <algorithm>
 ```
 
-If the selected search is the A*, the default heuristic is the Manhattan distance, but ther are more heuristics avaliable:
+### Available Algorithms
 
-1. Default -> Manhattan distance
-2. h_chebyshev -> Chebyshev distance
-3. h_euclidean -> Euclidean distance
-4. h_minhardness -> Chebyshev distance with information about the hardness
-5. h_combined -> Combined heuristic: (Chebyshev distance * min_hardness) + orientation adjustment
+1. Breadth-First Search (BFS)
+   ```bash
+   python main.py <map_path> -a bfs
+   ```
+2. Depth-First Search (DFS)
+   ```bash
+   python main.py <map_path> -a dfs
+   ```
+3. A* Search (A*)
+   ```bash
+   python main.py <map_path> -a astar
+   ```
 
+### A* Heuristics
+
+When using A*, the default heuristic is the **Manhattan distance**, but several other heuristics are implemented and can be specified using the `--heuristic` argument:
+
+| Heuristic name | Description |
+|-----------------|--------------|
+| `h` | Manhattan distance |
+| `h_chebyshev` | Chebyshev distance (8-directional movement) |
+| `h_euclidean` | Euclidean distance (straight-line distance) |
+| `h_minhardness` | Chebyshev distance scaled by the minimum rock hardness |
+| `h_combined` | Combined heuristic: (Chebyshev × min_hardness) + orientation adjustment |
+
+Example:
 ```bash
-python main.py <map_path> -a astar --heuristic <heuristic>
+python main.py <map_path> -a astar --heuristic h_combined
 ```
 
-To print the search tree, add --draw-tree:
+### Optional Output
+
+You can also include an optional output path using the `-o` or `--output` argument to automatically append the results to a CSV file:
 ```bash
-python main.py <map_path> -a astar --heuristic <heuristic> --draw-tree
+python main.py <map_path> -a astar --heuristic h_combined -o results/results_example.csv
+```
+This will record the performance metrics (`d`, `g`, `#E`, `#F`) for the selected algorithm and heuristic in the specified file.
+
+---
+
+## Running the Complete Experimentation Pipeline
+
+Although `main.py` can be used for individual tests, the repository includes a full automation script called **`run_experiments.sh`**, which reproduces the entire set of experiments described in the report.
+
+### What the Script Does
+
+1. **Generates random maps** of different sizes (3×3, 5×5, 7×7, 9×9) with a fixed seed for reproducibility, using the script `generate_maps.py`.
+2. **Runs all algorithms** (`bfs`, `dfs`, and `astar`) on every map file inside the `maps/` directory.  
+   - For A*, it executes each heuristic: `h`, `h_chebyshev`, `h_euclidean`, `h_minhardness`, and `h_combined`.
+3. **Saves the results** of all runs in corresponding CSV files under the `results/` directory (one per map size).
+4. **Generates summary tables** automatically:
+   - `generate_astar_tables.py`: computes performance statistics for all A* heuristics.
+   - `generate_alg_tables.py`: compares all algorithms (BFS, DFS, and A*) using the `h_combined` heuristic (the most suitable for this case).
+5. The tables are stored in the `tables/` directory.
+
+To execute the full experimental process:
+```bash
+./run_experiments.sh
+```
+This script will automatically generate maps, execute all experiments, and create all result tables. No manual intervention is required.
+
+## Visualize Tree Search
+
+In addition to the main experimentation pipeline, an optional visualization script is provided to **generate graphical representations of the search tree** for any specific map and algorithm.
+
+The script is called **`visualize_tree.py`**, and it allows you to execute a search (BFS, DFS, or A*) on a chosen map file and automatically produce a `.png` image of the resulting search tree.
+
+### Requirements
+
+This visualization tool requires the **Graphviz** library to be installed on your system.  
+> ⚠️ **Important:** Graphviz is **not included in `requirements.txt`**, because it cannot always be installed reliably via `pip`.  
+> You must install it manually on your operating system before running this script.
+
+Typical installation commands:
+```bash
+sudo apt install graphviz        # Ubuntu / Debian
+brew install graphviz            # macOS (Homebrew)
+choco install graphviz           # Windows (Chocolatey)
 ```
 
+Once Graphviz is installed on your system, you can install the Python bindings if needed:
+```bash
+pip install graphviz
+```
 
+### Usage
 
+You can generate a search tree visualization for a specific map and algorithm as follows:
+
+```bash
+python visualize_tree.py <map_path> -a <algorithm> [--heuristic <heuristic>] [-o <output_name>]
+```
+
+This will produce an image file showing the search tree structure, where:
+
+- 🟩 **Green nodes** represent the solution path.  
+- 🟥 **Red nodes** represent expanded states.  
+- 🟦 **Blue nodes** represent generated (but not expanded) states.
 

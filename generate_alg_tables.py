@@ -2,26 +2,26 @@
 # -*- coding: utf-8 -*-
 
 """
-Genera tablas CSV comparando algoritmos (bfs, dfs, astar) para una heurística seleccionada.
+Generates CSV summary tables comparing algorithms (BFS, DFS, A*).
 
-Entrada (CSV en ./results):
+Input (CSV files in ./results):
   results/results_N3x3.csv, results/results_5x5.csv, results/results_7x7.csv, results/results_9x9.csv
 
-Uso:
-  python make_algo_tables.py --heur h_euclidean
-  # o
-  python make_algo_tables.py -H h
+Usage:
+  python generate_alg_tables.py --heur h_euclidean
+  # or
+  python generate_alg_tables.py -H h
 
-Salida (en ./tables):
-  tables/algo_table_3x3_h.csv
-  tables/algo_table_5x5_h.csv
-  tables/algo_table_7x7_h.csv
-  tables/algo_table_9x9_h.csv
-  tables/algo_table_all_h.csv
+Output (in ./tables):
+  tables/alg_table_3x3.csv
+  tables/alg_table_5x5.csv
+  tables/alg_table_7x7.csv
+  tables/alg_table_9x9.csv
+  tables/alg_table_all.csv
 
-Cada tabla: filas = algoritmos (bfs, dfs, astar), columnas = d,g,#E,#F
- - Para astar, solo filas con heuristic == <heurística elegida>
- - Para bfs/dfs, se incluyen independientemente de la columna heuristic (suele ser 'N/A')
+Each table: rows = algorithms (bfs, dfs, astar), columns = d, g, #E, #F
+ - For A*, only rows matching the chosen heuristic are included.
+ - For BFS and DFS, all rows are included regardless of heuristic.
 """
 
 import os
@@ -34,72 +34,84 @@ TABLES_DIR = "tables"
 PATTERN = os.path.join(RESULTS_DIR, "results_*x*.csv")
 
 METRICS = ["d", "g", "#E", "#F"]
-ALG_ORDER = ["bfs", "dfs", "astar"]  # orden deseado en la tabla
+ALG_ORDER = ["bfs", "dfs", "astar"]  # Desired output order
+
 
 def extract_size_from_name(filename: str) -> str:
-    """Extrae '3x3', '5x5', etc. del nombre del archivo."""
+    """Extracts the grid size (e.g., '3x3', '5x5', etc.) from the filename."""
     name = os.path.basename(filename)
     for part in name.split("_"):
         if "x" in part:
             return part.replace(".csv", "").replace("N", "")
     return "unknown"
 
+
 def compute_table_for_size(df: pd.DataFrame, chosen_heur: str) -> pd.DataFrame:
     """
-    Devuelve un DataFrame con medias por algoritmo (bfs, dfs, astar con chosen_heur).
-    Columnas: METRICS | Índice: algorithm
+    Compute mean metrics per algorithm (bfs, dfs, astar with chosen heuristic).
+
+    Args:
+        df: Input DataFrame loaded from results CSV.
+        chosen_heur: Heuristic name to filter A* runs.
+
+    Returns:
+        A DataFrame with average values for each algorithm:
+        columns = METRICS, index = algorithm.
     """
-    # Normaliza nombres de columnas
     df.columns = [c.strip() for c in df.columns]
 
-    # Validación mínima
-    needed = {"map", "algorithm", "heuristic"} | set(METRICS)
-    if not needed.issubset(df.columns):
-        # Devuelve tabla vacía con estructura esperada
+    required = {"map", "algorithm", "heuristic"} | set(METRICS)
+    if not required.issubset(df.columns):
+        # Return empty placeholder if columns are missing
         return pd.DataFrame(columns=METRICS, index=ALG_ORDER)
 
-    # Asegurar tipos numéricos
+    # Convert metrics to numeric values (ignore errors)
     df_num = df.copy()
     for m in METRICS:
         df_num[m] = pd.to_numeric(df_num[m], errors="coerce")
 
-    # Filtrado por algoritmo:
+    # Filter per algorithm
     bfs_rows = df_num[df_num["algorithm"] == "bfs"]
     dfs_rows = df_num[df_num["algorithm"] == "dfs"]
-    astar_rows = df_num[(df_num["algorithm"] == "astar") & (df_num["heuristic"] == chosen_heur)]
+    astar_rows = df_num[
+        (df_num["algorithm"] == "astar") & (df_num["heuristic"] == chosen_heur)
+    ]
 
-    # Agrupa y promedia
+    # Group and compute mean metrics
     parts = []
     if not bfs_rows.empty:
-        g_bfs = bfs_rows.groupby("algorithm")[METRICS].mean(numeric_only=True)
-        parts.append(g_bfs)
+        parts.append(bfs_rows.groupby("algorithm")[METRICS].mean(numeric_only=True))
     if not dfs_rows.empty:
-        g_dfs = dfs_rows.groupby("algorithm")[METRICS].mean(numeric_only=True)
-        parts.append(g_dfs)
+        parts.append(dfs_rows.groupby("algorithm")[METRICS].mean(numeric_only=True))
     if not astar_rows.empty:
-        g_astar = astar_rows.groupby("algorithm")[METRICS].mean(numeric_only=True)
-        parts.append(g_astar)
+        parts.append(astar_rows.groupby("algorithm")[METRICS].mean(numeric_only=True))
 
     if parts:
         table = pd.concat(parts, axis=0)
     else:
         table = pd.DataFrame(columns=METRICS)
 
-    # Reordenar filas según ALG_ORDER; si falta alguna, no revienta
+    # Order rows by ALG_ORDER; ignore missing ones
     if not table.empty:
-        # Eliminar duplicados por si acaso y asegurar el orden
         table = table[~table.index.duplicated(keep="first")]
-        ordered_index = [a for a in ALG_ORDER if a in table.index]
-        # Añadir también cualquier otro algoritmo desconocido (por si existe) ordenado alfabéticamente
-        rest = sorted([a for a in table.index if a not in ALG_ORDER])
-        table = table.loc[ordered_index + rest]
+        ordered = [a for a in ALG_ORDER if a in table.index]
+        remaining = sorted([a for a in table.index if a not in ALG_ORDER])
+        table = table.loc[ordered + remaining]
         table = table.round(3)
 
     return table
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Genera tablas comparando algoritmos para una heurística concreta.")
-    parser.add_argument("-H", "--heur", required=True, help="Nombre de la heurística a usar para A* (ej.: h, h_euclidean, h_chebyshev, h_minhardness, h_combined)")
+    parser = argparse.ArgumentParser(
+        description="Generate comparison tables for different algorithms given a specific heuristic."
+    )
+    parser.add_argument(
+        "-H",
+        "--heur",
+        required=True,
+        help="Heuristic name to use for A* (e.g., h, h_euclidean, h_chebyshev, h_minhardness, h_combined).",
+    )
     args = parser.parse_args()
     chosen_heur = args.heur
 
@@ -107,39 +119,40 @@ def main():
     files = sorted(glob.glob(PATTERN))
 
     if not files:
-        print(f"No se encontraron archivos con el patrón: {PATTERN}")
+        print(f"No result files found matching pattern: {PATTERN}")
         return
 
-    # Para la tabla general
     all_dfs = []
 
     for csv_path in files:
         try:
             df = pd.read_csv(csv_path)
         except Exception as e:
-            print(f"[WARN] No se pudo leer {csv_path}: {e}")
+            print(f"[WARN] Could not read {csv_path}: {e}")
             continue
 
         size = extract_size_from_name(csv_path)
         table = compute_table_for_size(df, chosen_heur)
+
         out_path = os.path.join(TABLES_DIR, f"alg_table_{size}.csv")
         table.to_csv(out_path, index=True)
-        print(f"✅ Generado: {out_path}")
+        print(f"Generated: {out_path}")
 
-        # Acumular para tabla general
         all_dfs.append(df)
 
-    # --- Tabla general (todas las dimensiones) ---
+    # Global summary table (across all map sizes)
     if all_dfs:
         big_df = pd.concat(all_dfs, ignore_index=True)
         general_table = compute_table_for_size(big_df, chosen_heur)
-        out_all = os.path.join(TABLES_DIR, f"alg_table_all.csv")
-        general_table.to_csv(out_all, index=True)
-        print(f"✅ Generado (general): {out_all}")
-    else:
-        print("[INFO] No se generó tabla general: no se leyeron CSV.")
 
-    print("\nListo.")
+        out_all = os.path.join(TABLES_DIR, "alg_table_all.csv")
+        general_table.to_csv(out_all, index=True)
+        print(f"Generated global summary: {out_all}")
+    else:
+        print("No CSV files were successfully read; global table not generated.")
+
+    print("\nDone.")
+
 
 if __name__ == "__main__":
     main()
