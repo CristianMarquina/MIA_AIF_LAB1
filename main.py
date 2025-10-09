@@ -3,7 +3,7 @@ import csv
 from pathlib import Path
 from DrillingRobot import DrillingRobot
 from drilling_utils import *
-from search import breadth_first_graph_search, depth_first_graph_search, astar_search_with_log
+from search import breadth_first_graph_search, depth_first_graph_search, astar_search
 
 
 if __name__ == '__main__':
@@ -40,6 +40,7 @@ if __name__ == '__main__':
     # Visualization of the tree
     parser.add_argument(
         "--draw-tree",
+        default=False,
         action="store_true",
         help="If set, visualizes the search tree after the algorithm finishes."
     )
@@ -64,9 +65,6 @@ if __name__ == '__main__':
         print(f"An error occurred while loading the map: {e}")
         exit(1)
 
-    print(f"Problem loaded: From {problem.initial} to {problem.goal}")
-    print(f"Heuristic selected: {heuristic_choice}")
-
     # -------------------------------
     # 3. Run the selected algorithm
     # -------------------------------
@@ -75,43 +73,40 @@ if __name__ == '__main__':
     is_blind = False
 
     if algorithm_choice == 'bfs':
-        solution_node, gen, exp, edges, order = breadth_first_graph_search(problem)
+        solution_node, gen, exp, edges, order, frontier = breadth_first_graph_search(problem)
         algorithm_name = "Breadth-First Search (BFS)"
         is_blind = True
 
     elif algorithm_choice == 'dfs':
-        solution_node, gen, exp, edges, order = depth_first_graph_search(problem)
+        solution_node, gen, exp, edges, order, frontier = depth_first_graph_search(problem)
         algorithm_name = "Depth-First Search (DFS)"
         is_blind = True
 
     elif algorithm_choice == 'astar':
         if heuristic_choice == "default":
-            solution_node, gen, exp, edges, order = astar_search_with_log(problem)
+            solution_node, gen, exp, edges, order, frontier = astar_search(problem)
         elif hasattr(problem, heuristic_choice):
             heuristic_func = getattr(problem, heuristic_choice)
-            solution_node, gen, exp, edges, order = astar_search_with_log(problem, h=heuristic_func)
+            solution_node, gen, exp, edges, order, frontier = astar_search(problem, h=heuristic_func)
         else:
             print(f"Warning: Heuristic '{heuristic_choice}' not found. Using default.")
-            solution_node, gen, exp, edges, order = astar_search_with_log(problem)
+            solution_node, gen, exp, edges, order, frontier = astar_search(problem)
         
         algorithm_name = f"A* Search (heuristic: {heuristic_choice})"
         is_blind = False
-    
-    print_path_trace(problem, solution_node, algorithm_name, is_blind)
 
     # -------------------------------
-    # 4. Collect performance metrics
+    # 4. Print performance metrics
     # -------------------------------
+    print_path_trace(problem, solution_node, algorithm_name, is_blind)
+    
     d = getattr(solution_node, "depth", None)
     g = getattr(solution_node, "path_cost", None)
-    explored = getattr(problem, "expanded_nodes", None)
-    frontier = getattr(problem, "final_frontier", None)
+    explored = len(exp)
+    f = len(frontier)
 
-    print("\n--- Search Statistics ---")
-    print(f"d (solution depth): {d}")
-    print(f"g (solution cost): {g}")
-    print(f"#E (expanded nodes): {explored}")
-    print(f"#F (final frontier size): {frontier}")
+    print(f"\nTotal number of items in explored list: {explored}")
+    print(f"Total number of items in frontier: {f}")
 
     # -------------------------------
     # 5. Visualize Search Tree (optional)
@@ -153,7 +148,7 @@ if __name__ == '__main__':
                 'd': d,
                 'g': g,
                 '#E': explored,
-                '#F': frontier,
+                '#F': f,
             }
 
             with open(output_file, 'a', newline='', encoding='utf-8') as csvfile:

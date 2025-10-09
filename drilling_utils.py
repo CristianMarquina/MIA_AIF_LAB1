@@ -1,4 +1,4 @@
-from graphviz import Digraph
+#from graphviz import Digraph
 from collections import defaultdict
 
 # Consts for DrillingRobot actions
@@ -30,7 +30,7 @@ def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
     path = solution_node.path()
 
     # 2. Print the execution trace
-    print("--- EXECUTION TRACE (SOLUTION) ---")
+    print("--- EXECUTION TRACE (Solution) ---")
     
     # The first node is the root node (no previous operator)
     root_node = path[0]
@@ -53,6 +53,8 @@ def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
         x, y, o = node.state
         orientation = ORIENTATION_NAMES.get(o, 'N/A')
 
+        print(f"Operator: {operator}")
+
         # Print Node i
         if is_blind_search:
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, State: x={x}, y={y}, o={orientation})")
@@ -62,16 +64,8 @@ def print_path_trace(problem, solution_node, algorithm_name, is_blind_search):
             print(f"Node {i}: (depth:{node.depth}, total cost:{node.path_cost}, action:{operator}, h(n):{h_val}, State: x={x}, y={y}, o={orientation})")
 
 
-    # 3. Print final metrics
-    print("\n--- FINAL METRICS ---")
-    print(f"Node {len(path) - 1} (final node)")
-    print(f"Total path cost (g): {solution_node.path_cost}")
-    print("-" * 60)
-
-
 def draw_search_tree(gen, exp, edges, node_list_in_order, filename, solution_node=None):
-    
-    # 0. Crear un mapa Estado -> Objeto Node para obtener la información de forma robusta
+    """# 0. Crear un mapa Estado -> Objeto Node para obtener la información de forma robusta
     state_to_node_map = {node.state: node for node in gen}
     
     # --- CONFIGURATION ---
@@ -137,4 +131,4 @@ def draw_search_tree(gen, exp, edges, node_list_in_order, filename, solution_nod
         dot.edge(str(parent.state), str(child.state), label=str(child.action))
 
     dot.render(filename, format="png", cleanup=True)
-    print(f"Árbol guardado en {filename}.png")
+    print(f"Árbol guardado en {filename}.png")"""

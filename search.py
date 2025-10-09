@@ -215,8 +215,74 @@ def depth_first_tree_search(problem):
         frontier.extend(node.expand(problem))
     return None
 
-
 def depth_first_graph_search(problem):
+    """
+    Depth-first graph search (DFS).
+    Explora primero los nodos más profundos usando una pila (frontera).
+
+    Returns
+    -------
+    (solution, generated, expanded, edges, node_list_in_order, frontier)
+        solution : Node or None
+            Nodo solución si se alcanza un estado objetivo, None si no se encuentra.
+        generated : set[Node]
+            Conjunto de nodos generados.
+        expanded : set[Node]
+            Conjunto de nodos expandidos.
+        edges : list[tuple(Node, Node)]
+            Lista de aristas (padre, hijo) generadas.
+        node_list_in_order : list[Node]
+            Orden de generación de los nodos.
+        frontier : list[Node]
+            Contenido final de la pila (frontera).
+    """
+    node = Node(problem.initial)
+
+    # Registros para trazabilidad
+    expanded = set()
+    generated = {node}
+    edges = []
+    node_list_in_order = [node]
+    counter = 1
+    node.expansion_order = 0
+
+    if problem.goal_test(node.state):
+        return node, generated, expanded, edges, node_list_in_order, []
+
+    frontier = [node]                 # pila
+    frontier_states = {node.state}    # para evitar duplicados
+    explored = set()                  # estados ya expandidos
+
+    while frontier:
+        node = frontier.pop()
+        frontier_states.remove(node.state)
+
+        if node.state in explored:
+            continue
+        explored.add(node.state)
+        expanded.add(node)
+
+        for child in node.expand(problem):
+            s = child.state
+            if (s not in explored) and (s not in frontier_states):
+                generated.add(child)
+                edges.append((node, child))
+                child.expansion_order = counter
+                counter += 1
+                node_list_in_order.append(child)
+
+                if problem.goal_test(s):
+                    return child, generated, expanded, edges, node_list_in_order, frontier
+
+                frontier.append(child)
+                frontier_states.add(s)
+
+    # Si no hay solución, devolvemos también la frontera vacía
+    return None, generated, expanded, edges, node_list_in_order, frontier
+
+
+
+#def depth_first_graph_search(problem):
     """[Figure 3.7]
     Search the deepest nodes in the search tree first.
     Search through the successors of a problem to find a goal.
@@ -274,7 +340,7 @@ def breadth_first_graph_search(problem):
 
     if problem.goal_test(node.state):
         # Return the list if the goal is the initial state
-        return node, {node}, set(), [], node_list_in_order 
+        return node, {node}, set(), [], node_list_in_order, frontier
 
     frontier = deque([node])
     explored = set()
@@ -302,40 +368,90 @@ def breadth_first_graph_search(problem):
                 node_list_in_order.append(child) 
                 
                 if problem.goal_test(child.state):
-                    return child, generated, expanded, edges, node_list_in_order
+                    return child, generated, expanded, edges, node_list_in_order, frontier
                 frontier.append(child)
 
-    return None, generated, expanded, edges, node_list_in_order
+    return None, generated, expanded, edges, node_list_in_order, frontier
 
 
 def best_first_graph_search(problem, f, display=False):
-    """Search the nodes with the lowest f scores first.
-    You specify the function f(node) that you want to minimize; for example,
-    if f is a heuristic estimate to the goal, then we have greedy best
-    first search; if f is node.depth then we have breadth-first search.
-    There is a subtlety: the line "f = memoize(f, 'f')" means that the f
-    values will be cached on the nodes as they are computed. So after doing
-    a best first search you can examine the f values of the path returned."""
+    """
+    Best-first graph search.
+    Expande primero el nodo con el menor valor f(node).
+
+    Parameters
+    ----------
+    problem : Problem
+        Problema a resolver.
+    f : callable
+        Función de evaluación (menor f -> mayor prioridad).
+        Ejemplos:
+            - Greedy best-first: f = lambda n: h(n)
+            - A*: f = lambda n: n.path_cost + h(n)
+    display : bool, optional
+        Si True, imprime estadísticas de la búsqueda.
+
+    Returns
+    -------
+    (solution, generated, expanded, edges, node_list_in_order, frontier)
+        solution : Node or None
+            Nodo solución si se alcanza un estado objetivo, None si no se encuentra.
+        generated : set[Node]
+            Conjunto de nodos generados.
+        expanded : set[Node]
+            Conjunto de nodos expandidos.
+        edges : list[tuple(Node, Node)]
+            Lista de aristas (padre, hijo) generadas.
+        node_list_in_order : list[Node]
+            Orden de generación de los nodos.
+        frontier : list[Node]
+            Contenido final de la frontera (PriorityQueue convertida a lista ordenada por prioridad).
+    """
     f = memoize(f, 'f')
     node = Node(problem.initial)
+
+    # Inicialización de registros
+    expanded = set()
+    generated = {node}
+    edges = []
+    node_list_in_order = [node]
+    counter = 1
+    node.expansion_order = 0
+
+    # Frontera de prioridad mínima
     frontier = PriorityQueue('min', f)
     frontier.append(node)
     explored = set()
+
     while frontier:
         node = frontier.pop()
+
         if problem.goal_test(node.state):
             if display:
-                print(len(explored), "paths have been expanded and", len(frontier), "paths remain in the frontier")
-            return node
+                print(f"{len(expanded)} paths expanded and {len(frontier)} remain in the frontier.")
+            # Convertimos la frontera a lista para devolverla
+            return node, generated, expanded, edges, node_list_in_order, [item for _, item in sorted(frontier.heap)]
+
+        expanded.add(node)
         explored.add(node.state)
+
         for child in node.expand(problem):
-            if child.state not in explored and child not in frontier:
+            s = child.state
+            if (s not in explored) and (child not in frontier):
+                generated.add(child)
+                edges.append((node, child))
+                child.expansion_order = counter
+                counter += 1
+                node_list_in_order.append(child)
                 frontier.append(child)
             elif child in frontier:
+                # Actualiza si encuentra un f menor (A* o similar)
                 if f(child) < frontier[child]:
                     del frontier[child]
                     frontier.append(child)
-    return None
+
+    # Si no se encuentra solución
+    return None, generated, expanded, edges, node_list_in_order, [item for _, item in sorted(frontier.heap)]
 
 
 def uniform_cost_search(problem, display=False):
@@ -469,69 +585,6 @@ def astar_search(problem, h=None, display=False):
     else in your Problem subclass."""
     h = memoize(h or problem.h, 'h')
     return best_first_graph_search(problem, lambda n: n.path_cost + h(n), display)
-
-
-def astar_search_with_log(problem, h=None):
-    """A* con registro de nodos generados/expandidos."""
-    h = memoize(h or problem.h, 'h')
-
-    # Cost function f(n) 
-    f = lambda n: n.path_cost + h(n)
-    
-    # New registers for visualization
-    expanded = set()
-    generated = set()
-    edges = []
-    node_list_in_order = []
-    counter = 1
-
-
-    node = Node(problem.initial)
-    generated.add(node)
-    node_list_in_order.append(node)
-    node.expansion_order = 0 
-    
-    frontier = PriorityQueue('min', f)
-    frontier.append(node)
-    explored = {node.state: node} # explored saves the best node (less cost g) for each state
-    
-
-    while frontier:
-        node = frontier.pop()
-        
-        # Expansion register
-        expanded.add(node)
-        
-        if problem.goal_test(node.state):
-            return node, generated, expanded, edges, node_list_in_order
-        
-        for child in node.expand(problem):
-            s = child.state
-            
-            # New path cost
-            g = child.path_cost
-            
-            # If its a new node or a better path
-            if s not in explored or g < explored[s].path_cost:
-                
-                # If the node was known, update it
-                if s in explored:
-                    del frontier[explored[s]]
-                
-                explored[s] = child
-                generated.add(child)
-                
-                # Expansion and relation register
-                child.expansion_order = counter
-                counter += 1
-                node_list_in_order.append(child)
-                
-                if child.parent:
-                    edges.append((child.parent, child))
-                
-                frontier.append(child)
-    
-    return None, generated, expanded, edges, node_list_in_order
 
 
 # ______________________________________________________________________________
